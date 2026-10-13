@@ -7,7 +7,7 @@ import { FavoritesModule } from './favorites/favorites.module';
 import { ProfileModule } from './profile/profile.module';
 import { MessagesModule } from './messages/messages.module';
 import { AdsModule } from './ads/ads.module';
-// ... tus otros imports de módulos
+
 
 @Module({
   imports: [
