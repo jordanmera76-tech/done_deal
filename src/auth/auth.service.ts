@@ -1,75 +1,89 @@
 import { Injectable, UnauthorizedException, NotFoundException } from '@nestjs/common';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+import { User, UserDocument } from './schemas/user.schema';
 import { ProfileService } from '../profile/profile.service';
-import { AdsService } from '../ads/ads.service'; // <-- IMPORTADO
+import { AdsService } from '../ads/ads.service';
 
 @Injectable()
 export class AuthService {
-  private users = [];
-
   constructor(
+    @InjectModel(User.name) private userModel: Model<UserDocument>,
     private readonly profileService: ProfileService,
-    private readonly adsService: AdsService // <-- INYECTADO
+    private readonly adsService: AdsService,
   ) {}
 
-  register(userData: any) {
-    const newUser = {
-      id: String(this.users.length + 1),
+  async register(userData: any) {
+    // 1. Guardar el usuario real en MongoDB
+    const newUser = new this.userModel({
       email: userData.email,
       password: userData.password,
-    };
-    this.users.push(newUser);
-
-    this.profileService.updateProfile(newUser.id, {
-      name: userData.name || 'Usuario Nuevo',
-      email: userData.email,
-      phone: '',
-      location: '',
-      bio: ''
     });
+    const savedUser = await newUser.save();
+
+    // Convertimos el _id de MongoDB a string para usarlo con Profile
+    const userId = savedUser._id.toString();
+
+    // 2. Inicializar su perfil asociado
+    try {
+      await this.profileService.updateProfile(userId, {
+        name: userData.name || 'Usuario Nuevo',
+        email: userData.email,
+        phone: '',
+        location: '',
+        bio: '',
+      });
+    } catch (e) {
+      console.log('Error al crear perfil inicial:', e);
+    }
 
     return {
       message: 'Usuario registrado y perfil inicializado exitosamente',
-      user: { id: newUser.id, email: newUser.email }
+      user: { id: userId, email: savedUser.email },
     };
   }
 
-  login(credentials: any) {
-    const user = this.users.find(u => u.email === credentials.email && u.password === credentials.password);
+  async login(credentials: any) {
+    // Buscar el usuario en MongoDB por email y contraseña
+    const user = await this.userModel.findOne({
+      email: credentials.email,
+      password: credentials.password,
+    }).exec();
+
     if (!user) {
       throw new UnauthorizedException('Credenciales incorrectas');
     }
     return {
       message: 'Inicio de sesión exitoso',
-      access_token: 'jwt-token-simulado-123456789'
+      access_token: 'jwt-token-simulado-123456789',
     };
   }
 
   forgotPassword(email: string) {
     return {
-      message: `Se han enviado las instrucciones de recuperación a ${email}`
+      message: `Se han enviado las instrucciones de recuperación a ${email}`,
     };
   }
 
-  deleteAccount(id: string) {
-    const userIndex = this.users.findIndex(u => u.id === id);
-    if (userIndex === -1) {
+  async deleteAccount(id: string) {
+    // Buscar y eliminar el usuario en MongoDB por su ID
+    const deletedUser = await this.userModel.findByIdAndDelete(id).exec();
+    if (!deletedUser) {
       throw new NotFoundException('Usuario no encontrado');
     }
-    const deletedUser = this.users[userIndex];
-    this.users.splice(userIndex, 1);
 
     // ELIMINACIÓN EN CASCADA AUTOMÁTICA
     try {
-      this.profileService.removeProfile(id); // Borra su perfil
+      await this.profileService.removeProfile(id); // Borra su perfil
     } catch (e) {}
 
     try {
-      this.adsService.removeAdsByUser(id); // Borra todos sus anuncios publicados
+      await this.adsService.removeAdsByUser(id); // Borra todos sus anuncios publicados
     } catch (e) {}
 
     return {
       message: 'Cuenta, perfil y anuncios eliminados exitosamente',
-      user_deleted: deletedUser.email
+      user_deleted: deletedUser.email,
     };
   }
 }

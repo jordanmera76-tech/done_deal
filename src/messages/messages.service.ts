@@ -1,39 +1,31 @@
 import { Injectable } from '@nestjs/common';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+import { Message, MessageDocument } from './schemas/message.schema';
 
 @Injectable()
 export class MessagesService {
-  // Simulamos una base de datos de mensajes
-  private messages = [
-    {
-      id: '1',
-      senderId: '2',
-      receiverId: '1',
-      productId: '1',
-      content: 'Hola, ¿el iPhone 13 Pro todavía está disponible?',
-      createdAt: new Date().toISOString()
-    }
-  ];
+  constructor(
+    @InjectModel(Message.name) private messageModel: Model<MessageDocument>,
+  ) {}
 
   // Obtener todos los mensajes donde participa un usuario (como emisor o receptor)
-  getMessagesForUser(userId: string) {
-    return this.messages.filter(
-      msg => msg.senderId === userId || msg.receiverId === userId
-    );
+  async getMessagesForUser(userId: string) {
+    return this.messageModel
+      .find({
+        $or: [{ senderId: userId }, { receiverId: userId }],
+      })
+      .exec();
   }
 
-  // Enviar un nuevo mensaje
-  sendMessage(messageData: { senderId: string; receiverId: string; productId: string; content: string }) {
-    const newMessage = {
-      id: String(this.messages.length + 1),
-      ...messageData,
-      createdAt: new Date().toISOString()
-    };
-    
-    this.messages.push(newMessage);
-    
+  // Enviar y guardar un nuevo mensaje en MongoDB
+  async sendMessage(messageData: { senderId: string; receiverId: string; productId: string; content: string }) {
+    const newMessage = new this.messageModel(messageData);
+    const savedMessage = await newMessage.save();
+
     return {
       message: 'Mensaje enviado exitosamente',
-      data: newMessage
+      data: savedMessage,
     };
   }
 }

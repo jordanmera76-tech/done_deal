@@ -1,54 +1,65 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+import { Ad, AdDocument } from './schemas/ad.schemas';
 
 @Injectable()
 export class AdsService {
-  private ads = [
-    {
-      id: '1',
-      userId: '1',
-      title: 'iPhone 13 Pro 128GB (Usado)',
-      price: 550,
-      category: 'Electronics',
-      description: 'En excelente estado, batería al 85%.',
-      status: 'active'
+  constructor(@InjectModel(Ad.name) private adModel: Model<AdDocument>) {}
+
+  async create(createAdDto: any): Promise<Ad> {
+    const newAd = new this.adModel(createAdDto);
+    return newAd.save();
+  }
+
+  // Método que llama el controlador como createAd
+  async createAd(userId: string, createAdDto: any): Promise<Ad> {
+    const newAd = new this.adModel({ ...createAdDto, userId });
+    return newAd.save();
+  }
+
+  async findAll(): Promise<Ad[]> {
+    return this.adModel.find().exec();
+  }
+
+  async findOne(id: string): Promise<Ad> {
+    const ad = await this.adModel.findById(id).exec();
+    if (!ad) {
+      throw new NotFoundException(`Anuncio con ID ${id} no encontrado`);
     }
-  ];
-
-  findAll() {
-    return this.ads;
+    return ad;
   }
 
-  findByUser(userId: string) {
-    return this.ads.filter(ad => ad.userId === userId);
+  // Método que llama el controlador para buscar por usuario
+  async findByUser(userId: string): Promise<Ad[]> {
+    return this.adModel.find({ userId }).exec();
   }
 
-  createAd(userId: string, adData: any) {
-    const newAd = {
-      id: String(this.ads.length + 1),
-      userId,
-      ...adData,
-      status: 'active'
-    };
-    this.ads.push(newAd);
-    return {
-      message: 'Anuncio publicado exitosamente',
-      ad: newAd
-    };
+  async update(id: string, updateAdDto: any): Promise<Ad> {
+    const updatedAd = await this.adModel
+      .findByIdAndUpdate(id, updateAdDto, { new: true })
+      .exec();
+    if (!updatedAd) {
+      throw new NotFoundException(`Anuncio con ID ${id} no encontrado para actualizar`);
+    }
+    return updatedAd;
   }
 
-  removeAd(id: string) {
-    const index = this.ads.findIndex(ad => ad.id === id);
-    if (index === -1) throw new NotFoundException('Anuncio no encontrado');
-
-    const deleted = this.ads.splice(index, 1);
-    return {
-      message: 'Anuncio eliminado exitosamente',
-      ad: deleted[0]
-    };
+  async remove(id: string): Promise<Ad> {
+    const deletedAd = await this.adModel.findByIdAndDelete(id).exec();
+    if (!deletedAd) {
+      throw new NotFoundException(`Anuncio con ID ${id} no encontrado para eliminar`);
+    }
+    return deletedAd;
   }
 
-  // NUEVO: Eliminar todos los anuncios de un usuario al borrar su cuenta
-  removeAdsByUser(userId: string) {
-    this.ads = this.ads.filter(ad => ad.userId !== userId);
+  // Método que llama el controlador como removeAd
+  async removeAd(id: string): Promise<Ad> {
+    return this.remove(id);
+  }
+
+  // Método para la eliminación en cascada desde Auth Service
+  async removeAdsByUser(userId: string): Promise<any> {
+    return this.adModel.deleteMany({ userId }).exec();
   }
 }
