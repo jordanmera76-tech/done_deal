@@ -11,17 +11,12 @@ import * as express from 'express';
 bootstrap();  */
 
 // correr la base de datos en 
-
-
-
-
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  // Habilitar CORS
   app.enableCors();
 
-  // Aumentar el límite del body parser para permitir imágenes grandes en Base64
+  // Aumentar el límite del body parser para aceptar imágenes grandes en Base64
   app.use(express.json({ limit: '50mb' }));
   app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
