@@ -21,6 +21,10 @@ export class ProductsService {
   }
 
   async create(createProductDto: any) {
+    // Eliminar cualquier ID de texto que mande el frontend para que MongoDB cree uno válido
+    delete createProductDto._id;
+    delete createProductDto.id;
+
     const newProduct = new this.productModel(createProductDto);
     return newProduct.save();
   }
