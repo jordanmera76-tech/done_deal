@@ -14,21 +14,24 @@ export class AuthService {
   ) {}
 
   async register(userData: any) {
-    // 1. Guardar el usuario real en MongoDB
+    console.log('Datos recibidos del frontend:', userData);
+
+    // Mapear los campos asegurándonos de capturar tanto inglés como español
+    const email = userData.email || userData.correo;
+    const password = userData.password || userData.contrasena || userData.contraseña;
+
     const newUser = new this.userModel({
-      email: userData.email,
-      password: userData.password,
+      email,
+      password,
     });
     const savedUser = await newUser.save();
 
-    // Convertimos el _id de MongoDB a string para usarlo con Profile
     const userId = savedUser._id.toString();
 
-    // 2. Inicializar su perfil asociado
     try {
       await this.profileService.updateProfile(userId, {
-        name: userData.name || 'Usuario Nuevo',
-        email: userData.email,
+        name: userData.name || userData.nombre || 'Usuario Nuevo',
+        email: email,
         phone: '',
         location: '',
         bio: '',
