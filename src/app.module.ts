@@ -12,7 +12,8 @@ import { AdsModule } from './ads/ads.module';
 @Module({
   imports: [
     // Conexión a tu MongoDB local con el nombre de base de datos 'donedeal'
-    MongooseModule.forRoot('mongodb://localhost:27017/donedeal'),
+    //MongooseModule.forRoot('mongodb://localhost:27017/donedeal'),
+    MongooseModule.forRoot((globalThis as any).process?.env?.MONGODB_URI || 'mongodb://localhost:27017/donedeal'),
     ProductsModule,
     AuthModule,
     CartModule,
