@@ -1,5 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
+import * as express from 'express';
 
 /*async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -13,14 +14,17 @@ bootstrap();  */
 
 
 
+
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  
-  // ¡Vital para que tu Frontend en Vercel se pueda comunicar con este Backend!
-  app.enableCors(); 
 
-  // Puerto dinámico asignado por Render/Railway o 3000 por defecto
-  const port = Number((globalThis as any).process?.env?.PORT) || 3000;
-await app.listen(port);
+  // Habilitar CORS
+  app.enableCors();
+
+  // Aumentar el límite del body parser para permitir imágenes grandes en Base64
+  app.use(express.json({ limit: '50mb' }));
+  app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+
+  await app.listen(process.env.PORT || 3000);
 }
 bootstrap();
